@@ -1,0 +1,244 @@
+
+-- ==========================================
+-- SMART SERVICE MANAGEMENT SYSTEM
+-- DATABASE
+-- ==========================================
+
+CREATE DATABASE IF NOT EXISTS smart_service_management;
+
+USE smart_service_management;
+
+-- 1. USERS TABLE
+CREATE TABLE users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    phone VARCHAR(15) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    role ENUM('admin', 'user') DEFAULT 'user',
+    default_address VARCHAR(500),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. ADDRESSES TABLE
+CREATE TABLE addresses (
+    address_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    address VARCHAR(500) NOT NULL,
+    latitude DECIMAL(10,7),
+    longitude DECIMAL(10,7),
+    is_default BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id)
+    REFERENCES users(user_id)
+    ON DELETE CASCADE
+);
+
+-- 3. SERVICES TABLE
+CREATE TABLE services (
+    service_id INT AUTO_INCREMENT PRIMARY KEY,
+    service_name VARCHAR(150) NOT NULL,
+    description TEXT,
+    skill_required VARCHAR(100) NOT NULL,
+    base_charge DECIMAL(10,2) NOT NULL,
+    estimated_time INT DEFAULT 60,
+    status ENUM('Active','Inactive') DEFAULT 'Active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 4. SERVICEMEN TABLE
+CREATE TABLE servicemen (
+    serviceman_id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    phone VARCHAR(15) NOT NULL UNIQUE,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    skill VARCHAR(100) NOT NULL,
+
+    availability ENUM(
+        'Available',
+        'Busy',
+        'On Leave',
+        'Inactive'
+    ) DEFAULT 'Available',
+
+    current_workload INT DEFAULT 0,
+    latitude DECIMAL(10,7),
+    longitude DECIMAL(10,7),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 5. SERVICE REQUESTS TABLE
+CREATE TABLE service_requests (
+    request_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    service_id INT NOT NULL,
+    address_id INT NOT NULL,
+    description TEXT NOT NULL,
+
+    priority ENUM(
+        'Low',
+        'Medium',
+        'High',
+        'Emergency'
+    ) DEFAULT 'Medium',
+
+    status ENUM(
+        'Pending',
+        'Accepted',
+        'Rejected',
+        'Assigned',
+        'In Progress',
+        'Completed',
+        'Cancelled'
+    ) DEFAULT 'Pending',
+
+    charge DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    accepted_at DATETIME,
+    completed_at DATETIME,
+
+    FOREIGN KEY (user_id)
+    REFERENCES users(user_id),
+
+    FOREIGN KEY (service_id)
+    REFERENCES services(service_id),
+
+    FOREIGN KEY (address_id)
+    REFERENCES addresses(address_id)
+);
+
+-- 6. ASSIGNMENTS TABLE
+CREATE TABLE assignments (
+    assignment_id INT AUTO_INCREMENT PRIMARY KEY,
+    request_id INT NOT NULL,
+    serviceman_id INT NOT NULL,
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    started_at DATETIME,
+    completed_at DATETIME,
+
+    status ENUM(
+        'Assigned',
+        'In Progress',
+        'Completed',
+        'Cancelled'
+    ) DEFAULT 'Assigned',
+
+    FOREIGN KEY (request_id)
+    REFERENCES service_requests(request_id),
+
+    FOREIGN KEY (serviceman_id)
+    REFERENCES servicemen(serviceman_id)
+);
+
+-- 7. LEAVE REQUESTS TABLE
+CREATE TABLE leave_requests (
+    leave_id INT AUTO_INCREMENT PRIMARY KEY,
+    serviceman_id INT NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    reason VARCHAR(500) NOT NULL,
+
+    status ENUM(
+        'Pending',
+        'Approved',
+        'Rejected'
+    ) DEFAULT 'Pending',
+
+    admin_remark VARCHAR(500),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    reviewed_at DATETIME,
+
+    FOREIGN KEY (serviceman_id)
+    REFERENCES servicemen(serviceman_id)
+);
+
+-- 8. SERVICE HISTORY TABLE
+CREATE TABLE service_history (
+    history_id INT AUTO_INCREMENT PRIMARY KEY,
+    request_id INT NOT NULL UNIQUE,
+    user_id INT NOT NULL,
+    serviceman_id INT NOT NULL,
+    charge DECIMAL(10,2) NOT NULL,
+    completed_at DATETIME NOT NULL,
+
+    FOREIGN KEY (request_id)
+    REFERENCES service_requests(request_id),
+
+    FOREIGN KEY (user_id)
+    REFERENCES users(user_id),
+
+    FOREIGN KEY (serviceman_id)
+    REFERENCES servicemen(serviceman_id)
+);
+
+-- ==========================================
+-- INDEXES
+-- ==========================================
+
+CREATE INDEX idx_user_role
+ON users(role);
+
+CREATE INDEX idx_request_status
+ON service_requests(status);
+
+CREATE INDEX idx_request_priority
+ON service_requests(priority);
+
+CREATE INDEX idx_request_user
+ON service_requests(user_id);
+
+CREATE INDEX idx_serviceman_skill
+ON servicemen(skill);
+
+CREATE INDEX idx_serviceman_availability
+ON servicemen(availability);
+
+CREATE INDEX idx_assignment_serviceman
+ON assignments(serviceman_id);
+
+CREATE INDEX idx_leave_status
+ON leave_requests(status);
+
+-- ==========================================
+-- SAMPLE SERVICES
+-- ==========================================
+
+INSERT INTO services
+(service_name, description, skill_required, base_charge, estimated_time)
+VALUES
+('Electrical Repair',
+ 'Electrical wiring and switch repair',
+ 'Electrician', 300.00, 60),
+
+('Plumbing Repair',
+ 'Pipe leakage and tap repair',
+ 'Plumber', 250.00, 60),
+
+('AC Repair',
+ 'Air conditioner maintenance and repair',
+ 'AC Technician', 500.00, 90),
+
+('Appliance Repair',
+ 'Household appliance repair',
+ 'Appliance Technician', 400.00, 90),
+
+('Carpentry',
+ 'Furniture and wooden item repair',
+ 'Carpenter', 350.00, 120);
+
+-- ==========================================
+-- VERIFY DATABASE
+-- ==========================================
+
+SHOW TABLES;
+
+SELECT * FROM users;
+SELECT * FROM addresses;
+SELECT * FROM services;
+SELECT * FROM servicemen;
+SELECT * FROM service_requests;
+SELECT * FROM assignments;
+SELECT * FROM leave_requests;
+SELECT * FROM service_history;
